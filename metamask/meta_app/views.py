@@ -95,6 +95,7 @@ class CoinTransactionHistory(APIView):
 
         # Etherscan API endpoint for getting the transaction list
         api_url = f"https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0&endblock=99999999&sort=desc&apikey={api_key}"
+        print(api_url, '==========')
 
         try:
             response = requests.get(api_url)
