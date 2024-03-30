@@ -2,12 +2,15 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.conf import settings
 from .models import EthereumAccount, TokenContract, ChainDetails
 from .serializers import EthereumAccountSerializer,TokenInfoSerializer,ChainDetailsSerializer
 from web3 import Web3, Account
 import requests
 from .utils import get_token_logo_path
 from Authentication.models import CustomUser
+import pyqrcode
+import os
 
 
 class GenerateNetworkAccount(APIView):
@@ -226,3 +229,15 @@ class SendCoinView(APIView):
 
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+
+
+class EthereumQRCodeAPIView(APIView):
+    def post(self, request):
+        wallet_address = request.data.get('wallet_address')
+        amount = request.data.get('amount', 0)
+        data = f'ethereum:{wallet_address}?value={amount}'
+        qr = pyqrcode.create(data)
+        qr_file_path = os.path.join(settings.MEDIA_ROOT, "ethereum_qrcode.svg")
+        qr.svg(qr_file_path, scale=8)
+        qr_url = request.build_absolute_uri(settings.MEDIA_URL + "ethereum_qrcode.svg")
+        return Response({'message': 'Ethereum QR code generated successfully', 'qr_code_url': qr_url}, status=status.HTTP_201_CREATED)
