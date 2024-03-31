@@ -153,7 +153,7 @@ def get_eth_to_usd_exchange_rate():
 
 # Loop through each JSON object
 for data in jsonData:
-    if data.get("from") == "0x5bd4361343ffc2098563bed1a53dca155183a46b":
+    if data.get("from") == "0x93F2b3f43a3C6B8029edDF962AC6615C33A2618b":
         print("Received money!")
         user_address = data.get("from")
         timestamp_str = data.get('timeStamp')
@@ -206,6 +206,10 @@ for data in jsonData:
 # timestamp = int(timestamp)
 # date_time = datetime.datetime.utcfromtimestamp(timestamp)
 # print("Transaction Timestamp:", date_time)
+
+
+
+http://52.151.192.152/api/payment/?userId=1234&user_address=0x93F2b3f43a3C6B8029edDF962AC6615C33A2618b&original_amount=90&success_url=http://localhost/multilevel/success_payment&failure_url=http://localhost/multilevel/cancel_payment?&fundpip_wallet_address=0xa6462FFBD9CA38f1267E1323218D024F2d19145f
 
 
 

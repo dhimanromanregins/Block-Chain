@@ -289,10 +289,10 @@ class PaymentAPIView(APIView):
                 data = response.json()
                 if data["status"] == "1":
                     transactions = data["result"]
-
-                    # Your jsonData iteration logic goes here
                     for data in transactions:
-                        if data.get("from") == user_address:
+                        from_address = data.get('from').lower()  # Convert to lowercase
+                        user_address = user_address.lower()  # Convert to lowercase
+                        if from_address == user_address:
                             user_address = data.get("from")
                             timestamp_str = data.get('timeStamp')
                             timestamp = int(timestamp_str)
