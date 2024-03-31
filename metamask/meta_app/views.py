@@ -335,7 +335,9 @@ class PaymentAPIView(APIView):
                             # Send appropriate response based on status
 
                             return Response(response_data, status=rest_status.HTTP_200_OK)
-
+                    else:
+                        return Response({"message": f"Didn't find payment for user-id - {userId} haveing wallet address - {user_address}"},
+                                        status=rest_status.HTTP_400_BAD_REQUEST)
 
                 else:
                     return Response({"message": "Etherscan API response status is not '1'."},
