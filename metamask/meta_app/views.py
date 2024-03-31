@@ -1,7 +1,6 @@
 # views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
 from django.conf import settings
 from .models import EthereumAccount, TokenContract, ChainDetails
 from .serializers import EthereumAccountSerializer,TokenInfoSerializer,ChainDetailsSerializer
@@ -9,8 +8,11 @@ from web3 import Web3, Account
 import requests
 from .utils import get_token_logo_path
 from Authentication.models import CustomUser
+from rest_framework import status as rest_status
 import pyqrcode
 import os
+from rest_framework import status
+import datetime
 
 
 class GenerateNetworkAccount(APIView):
@@ -241,3 +243,105 @@ class EthereumQRCodeAPIView(APIView):
         qr.svg(qr_file_path, scale=8)
         qr_url = request.build_absolute_uri(settings.MEDIA_URL + "ethereum_qrcode.svg")
         return Response({'message': 'Ethereum QR code generated successfully', 'qr_code_url': qr_url}, status=status.HTTP_201_CREATED)
+
+def Wei_to_Eth(amount):
+    amount_is_wei = amount
+    wei_to_ether_conversion_factor = 10 ** 18
+    value_in_ether = amount_is_wei / wei_to_ether_conversion_factor
+    return value_in_ether
+
+
+def get_eth_to_usd_exchange_rate():
+    url = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
+    response = requests.get(url)
+    data = response.json()
+    return data["ethereum"]["usd"]
+
+
+
+class PaymentAPIView(APIView):
+    def get(self, request):
+        # Get mandatory query parameters
+        userId = request.GET.get("userId")
+        user_address = request.GET.get("user_address")
+        original_amount_usd = request.GET.get("original_amount")
+        success_url = request.GET.get("success_url")
+        failure_url = request.GET.get("failure_url")
+        fundpip_wallet_address = request.GET.get("fundpip_wallet_address")
+
+        # Check if any mandatory parameter is missing
+        if not all([user_address, original_amount_usd, success_url, failure_url]):
+            return Response({"message": "All mandatory query parameters are required: user_address, original_amount, fundpip_wallet_address,userId,success_url, failure_url"}, status=rest_status.HTTP_400_BAD_REQUEST)
+
+        try:
+            original_amount_usd = float(original_amount_usd)
+        except ValueError:
+            return Response({"message": "original_amount must be a valid number"}, status=rest_status.HTTP_400_BAD_REQUEST)
+
+        api_key = "7DI9U879W1P9613SHPVUEKMXF7WDT85D5X"
+
+        # Etherscan API endpoint for getting the transaction list
+        api_url = f"https://api.etherscan.io/api?module=account&action=txlist&address={fundpip_wallet_address}&startblock=0&endblock=99999999&sort=desc&apikey={api_key}"
+
+        try:
+            response = requests.get(api_url)
+            if response.status_code == 200:
+                data = response.json()
+                if data["status"] == "1":
+                    transactions = data["result"]
+
+                    # Your jsonData iteration logic goes here
+                    for data in transactions:
+                        if data.get("from") == user_address:
+                            user_address = data.get("from")
+                            timestamp_str = data.get('timeStamp')
+                            timestamp = int(timestamp_str)
+                            datetime_obj = datetime.datetime.utcfromtimestamp(timestamp)
+                            formatted_datetime = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+                            eth_amount = data.get('value')
+                            eth_amount = int(eth_amount)
+                            eth_to_usd_exchange_rate = get_eth_to_usd_exchange_rate()
+                            usd_amount = eth_amount * eth_to_usd_exchange_rate
+                            usd_amount_formatted = "{:.2f}".format(usd_amount / 10 ** 18)
+                            paymentId = data.get('blockNumber')
+                            value = int(data.get('value'))
+                            amount = Wei_to_Eth(value)
+                            print(original_amount_usd, float(usd_amount_formatted))
+
+                            # Calculate status
+                            if original_amount_usd == float(usd_amount_formatted):
+                                status = "Complete"
+                            elif original_amount_usd < float(usd_amount_formatted):
+                                difference = float(usd_amount_formatted) - original_amount_usd
+                                status = f"OverPaid - {difference:.2f} USD"
+                            elif original_amount_usd > float(usd_amount_formatted):
+                                difference = original_amount_usd - float(usd_amount_formatted)
+                                status = f"UnderPaid - {difference:.2f} USD"
+                            else:
+                                status = "In Process"
+
+                            # Prepare response data
+                            response_data = {
+                                "userId":userId,
+                                "user_address": user_address,
+                                "datetime": formatted_datetime,
+                                "paymentId": paymentId,
+                                "amount": amount,
+                                "usd_amount": f"{usd_amount_formatted} USD",
+                                "status": status,
+                                "success_url":success_url
+                            }
+
+                            # Send appropriate response based on status
+
+                            return Response(response_data, status=rest_status.HTTP_200_OK)
+
+
+                else:
+                    return Response({"message": "Etherscan API response status is not '1'."},
+                                    status=rest_status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"message": "Failed to connect to Etherscan API."},
+                                status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"message": str(e)}, status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
