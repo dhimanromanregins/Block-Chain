@@ -294,6 +294,7 @@ class PaymentAPIView(APIView):
                         user_address = user_address.lower()  # Convert to lowercase
                         if from_address == user_address:
                             user_address = data.get("from")
+                            status = data.get('status')
                             timestamp_str = data.get('timeStamp')
                             timestamp = int(timestamp_str)
                             datetime_obj = datetime.datetime.utcfromtimestamp(timestamp)
@@ -310,15 +311,15 @@ class PaymentAPIView(APIView):
 
                             # Calculate status
                             if original_amount_usd == float(usd_amount_formatted):
-                                status = "Complete"
+                                payment_state = "Complete"
                             elif original_amount_usd < float(usd_amount_formatted):
                                 difference = float(usd_amount_formatted) - original_amount_usd
-                                status = f"OverPaid - {difference:.2f} USD"
+                                payment_state = f"OverPaid - {difference:.2f} USD"
                             elif original_amount_usd > float(usd_amount_formatted):
                                 difference = original_amount_usd - float(usd_amount_formatted)
-                                status = f"UnderPaid - {difference:.2f} USD"
+                                payment_state = f"UnderPaid - {difference:.2f} USD"
                             else:
-                                status = "In Process"
+                                payment_state = "In Process"
 
                             # Prepare response data
                             response_data = {
@@ -328,7 +329,8 @@ class PaymentAPIView(APIView):
                                 "paymentId": paymentId,
                                 "amount": amount,
                                 "usd_amount": f"{usd_amount_formatted} USD",
-                                "status": status,
+                                "payment_state": payment_state,
+                                "status": True,
                                 "success_url":success_url
                             }
 
