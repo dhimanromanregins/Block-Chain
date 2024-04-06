@@ -70,26 +70,7 @@ class GenerateNetworkAccount(APIView):
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 
-class CoinBalance(APIView):
-    def get(self, request, address, symbol):
-        chain_symbol = request.data.get('symbol')
 
-        if chain_symbol:
-            return Response({"message": "chain_symbol is required in the request data."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        rpc = ChainDetails.objects.filter(chain_symbol=symbol).first()
-        rpc_url = rpc.chain_rpc
-
-        # Connect to an Ethereum node (e.g., Infura)
-        w3 = Web3(Web3.HTTPProvider(rpc_url))
-
-        try:
-            balance_wei = w3.eth.get_balance(address)
-            balance_eth = w3.from_wei(balance_wei, 'ether')
-            return Response({"address": address, "balance_wei": balance_wei, "balance_eth": balance_eth}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -121,13 +102,13 @@ class CoinTransactionHistory(APIView):
 class CoinTokenInfo(APIView):
     def get(self, request, address):
         # Initialize a web3.py instance
-        w3 = Web3(Web3.HTTPProvider('https://wider-indulgent-brook.discover.quiknode.pro/67c3e69fe1b270b5f51fa0d46cc048a9963e9a21/'))
+        w3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
 
         # Define the contract address and ABI of the token
-        token_contract_address = '0x50327c6c5a14DCaDE707ABad2E27eB517df87AB5'
-        token_abi_url = 'https://api.etherscan.io/api?module=contract&action=getabi&address=' + token_contract_address
+        token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
+        token_abi_url = f'https://api.bscscan.com/api?module=contract&action=getabi&address={token_contract_address}'
 
-        # Fetch the ABI from Etherscan
+        # Fetch the ABI from BSCScan
         response = requests.get(token_abi_url)
         token_abi = response.json()['result']
 
@@ -144,6 +125,11 @@ class CoinTokenInfo(APIView):
             token_name = token_contract.functions.name().call()
             token_symbol = token_contract.functions.symbol().call()
             return token_name, token_symbol
+
+        # Function to get token logo path (you need to define this function)
+        def get_token_logo_path(contract_address):
+            # Implement this function to get the logo path
+            pass
 
         try:
             token_balance = get_token_balance(address)
@@ -252,10 +238,23 @@ def Wei_to_Eth(amount):
 
 
 def get_eth_to_usd_exchange_rate():
-    url = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
-    response = requests.get(url)
-    data = response.json()
-    return data["ethereum"]["usd"]
+    try:
+        url = 'https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=usd'
+        response = requests.get(url)
+        data = response.json()
+        usdt_price = data['tether']['usd']
+        return usdt_price
+    except Exception as e:
+        print(f"Error fetching USDT price: {e}")
+        return None
+
+def calculate_usdt_value(amount_usdt):
+    usdt_price = get_eth_to_usd_exchange_rate()
+    if usdt_price is not None:
+        value_usd = amount_usdt * usdt_price
+        return value_usd
+    else:
+        return None
 
 
 
@@ -278,10 +277,11 @@ class PaymentAPIView(APIView):
         except ValueError:
             return Response({"message": "original_amount must be a valid number"}, status=rest_status.HTTP_400_BAD_REQUEST)
 
-        api_key = "7DI9U879W1P9613SHPVUEKMXF7WDT85D5X"
+        api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
+        token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
 
         # Etherscan API endpoint for getting the transaction list
-        api_url = f"https://api.etherscan.io/api?module=account&action=txlist&address={fundpip_wallet_address}&startblock=0&endblock=99999999&sort=desc&apikey={api_key}"
+        api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={fundpip_wallet_address}&contractaddress={token_contract_address}&apikey={api_key}'
 
         try:
             response = requests.get(api_url)
@@ -347,3 +347,45 @@ class PaymentAPIView(APIView):
                                 status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"message": str(e)}, status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+class CoinBalance(APIView):
+    def get(self, request, address, symbol):
+        chain_symbol = request.data.get('symbol')
+
+        if chain_symbol:
+            return Response({"message": "chain_symbol is required in the request data."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # rpc = ChainDetails.objects.filter(chain_symbol=symbol).first()/
+        rpc_url = "https://fittest-misty-seed.quiknode.pro/0a037be47a682e693c5de2a0698134eefa60928b/"
+
+        # Connect to an Ethereum node (e.g., Infura)
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+
+        try:
+            # Check ETH balance
+            balance_wei = w3.eth.get_balance(address)
+            print(balance_wei)
+            # balance_eth = w3.fromWei(balance_wei, 'ether')
+
+            # Token details
+            token_contract_address = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+            token_abi = [{"constant":True,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"payable":False,"stateMutability":"view","type":"function"},{"constant":True,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"payable":False,"stateMutability":"view","type":"function"},{"constant":True,"inputs":[{"name":"","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"payable":False,"stateMutability":"view","type":"function"}]
+
+            # Load the token contract
+            token_contract = w3.eth.contract(address=token_contract_address, abi=token_abi)
+
+            # Call the balanceOf function on the token contract
+            token_balance = token_contract.functions.balanceOf(address).call()
+
+            return Response({
+                "address": address,
+                "balance_wei": balance_wei,
+                # "balance_eth": balance_eth,
+                "token_balance": token_balance
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

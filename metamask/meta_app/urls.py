@@ -11,5 +11,7 @@ urlpatterns = [
     path('coin_price/', CoinPriceView.as_view(), name='coin_price'),
     path('send_crypto/', SendCoinView.as_view(), name='send_coin'),
     path('generate-qr/', EthereumQRCodeAPIView.as_view(), name='generate_qr'),
+    path('balance/<str:address>/<str:symbol>/', CoinBalance.as_view(), name='coin_balance'),
+
     path('payment/', PaymentAPIView.as_view(), name='payment'),
 ]
