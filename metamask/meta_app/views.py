@@ -258,6 +258,7 @@ def calculate_usdt_value(amount_usdt):
 
 
 
+
 class PaymentAPIView(APIView):
     def get(self, request):
         # Get mandatory query parameters
@@ -270,7 +271,7 @@ class PaymentAPIView(APIView):
 
         # Check if any mandatory parameter is missing
         if not all([user_address, original_amount_usd, success_url, failure_url]):
-            return Response({"message": "All mandatory query parameters are required: user_address, original_amount, fundpip_wallet_address,userId,success_url, failure_url"}, status=rest_status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "All mandatory query parameters are required: user_address, original_amount, fundpip_wallet_address, userId, success_url, failure_url"}, status=rest_status.HTTP_400_BAD_REQUEST)
 
         try:
             original_amount_usd = float(original_amount_usd)
@@ -280,7 +281,6 @@ class PaymentAPIView(APIView):
         api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
         token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
 
-        # Etherscan API endpoint for getting the transaction list
         api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={fundpip_wallet_address}&contractaddress={token_contract_address}&apikey={api_key}'
 
         try:
@@ -289,56 +289,62 @@ class PaymentAPIView(APIView):
                 data = response.json()
                 if data["status"] == "1":
                     transactions = data["result"]
-                    for data in transactions:
+                    
+                    # Find the last transaction for the user address
+                    last_transaction = None
+                    for data in reversed(transactions):
                         from_address = data.get('from').lower()  # Convert to lowercase
-                        user_address = user_address.lower()  # Convert to lowercase
-                        if from_address == user_address:
-                            user_address = data.get("from")
-                            status = data.get('status')
-                            timestamp_str = data.get('timeStamp')
-                            timestamp = int(timestamp_str)
-                            datetime_obj = datetime.datetime.utcfromtimestamp(timestamp)
-                            formatted_datetime = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
-                            eth_amount = data.get('value')
-                            eth_amount = int(eth_amount)
-                            eth_to_usd_exchange_rate = get_eth_to_usd_exchange_rate()
-                            usd_amount = eth_amount * eth_to_usd_exchange_rate
-                            usd_amount_formatted = "{:.2f}".format(usd_amount / 10 ** 18)
-                            paymentId = data.get('blockNumber')
-                            value = int(data.get('value'))
-                            amount = Wei_to_Eth(value)
-                            print(original_amount_usd, float(usd_amount_formatted))
+                        user_address_lower = user_address.lower()  # Convert to lowercase
+                        if from_address == user_address_lower:
+                            last_transaction = data
+                            break  # Stop iteration when the last transaction for the user is found
 
-                            # Calculate status
-                            if original_amount_usd == float(usd_amount_formatted):
-                                payment_state = "Complete"
-                            elif original_amount_usd < float(usd_amount_formatted):
-                                difference = float(usd_amount_formatted) - original_amount_usd
-                                payment_state = f"OverPaid - {difference:.2f} USD"
-                            elif original_amount_usd > float(usd_amount_formatted):
-                                difference = original_amount_usd - float(usd_amount_formatted)
-                                payment_state = f"UnderPaid - {difference:.2f} USD"
-                            else:
-                                payment_state = "In Process"
+                    if last_transaction:
+                        # Process the last transaction
+                        from_address = last_transaction.get('from')
+                        status = last_transaction.get('status')
+                        timestamp_str = last_transaction.get('timeStamp')
+                        timestamp = int(timestamp_str)
+                        datetime_obj = datetime.datetime.utcfromtimestamp(timestamp)
+                        formatted_datetime = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+                        eth_amount = last_transaction.get('value')
+                        eth_amount = int(eth_amount)
+                        eth_to_usd_exchange_rate = get_eth_to_usd_exchange_rate()
+                        usd_amount = eth_amount * eth_to_usd_exchange_rate
+                        usd_amount_formatted = "{:.2f}".format(usd_amount / 10 ** 18)
+                        paymentId = last_transaction.get('blockNumber')
+                        value = int(last_transaction.get('value'))
+                        amount = Wei_to_Eth(value)
 
-                            # Prepare response data
-                            response_data = {
-                                "userId":userId,
-                                "user_address": user_address,
-                                "datetime": formatted_datetime,
-                                "paymentId": paymentId,
-                                "amount": amount,
-                                "usd_amount": f"{usd_amount_formatted} USD",
-                                "payment_state": payment_state,
-                                "status": True,
-                                "success_url":success_url
-                            }
+                        # Calculate status
+                        if original_amount_usd == float(usd_amount_formatted):
+                            payment_state = "Complete"
+                        elif original_amount_usd < float(usd_amount_formatted):
+                            difference = float(usd_amount_formatted) - original_amount_usd
+                            payment_state = f"OverPaid - {difference:.2f} USD"
+                        elif original_amount_usd > float(usd_amount_formatted):
+                            difference = original_amount_usd - float(usd_amount_formatted)
+                            payment_state = f"UnderPaid - {difference:.2f} USD"
+                        else:
+                            payment_state = "In Process"
 
-                            # Send appropriate response based on status
+                        # Prepare response data
+                        response_data = {
+                            "userId": userId,
+                            "user_address": from_address,
+                            "datetime": formatted_datetime,
+                            "paymentId": paymentId,
+                            "amount": amount,
+                            "usd_amount": f"{usd_amount_formatted} USD",
+                            "payment_state": payment_state,
+                            "status": True,
+                            "success_url": success_url
+                        }
 
-                            return Response(response_data, status=rest_status.HTTP_200_OK)
+                        # Send appropriate response based on status
+                        return Response(response_data, status=rest_status.HTTP_200_OK)
                     else:
-                        return Response({"message": f"Didn't find payment for user-id - {userId} haveing wallet address - {user_address}"},
+                        return Response({"message": f"No transactions found for user ID - {userId} with wallet address - {user_address}"},
                                         status=rest_status.HTTP_400_BAD_REQUEST)
 
                 else:
@@ -349,9 +355,6 @@ class PaymentAPIView(APIView):
                                 status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"message": str(e)}, status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
 
 class CoinBalance(APIView):
     def get(self, request, address, symbol):
