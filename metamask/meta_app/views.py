@@ -228,7 +228,13 @@ class EthereumQRCodeAPIView(APIView):
         qr_file_path = os.path.join(settings.MEDIA_ROOT, "ethereum_qrcode.svg")
         qr.svg(qr_file_path, scale=8)
         qr_url = request.build_absolute_uri(settings.MEDIA_URL + "ethereum_qrcode.svg")
-        return Response({'message': 'Ethereum QR code generated successfully', 'qr_code_url': qr_url}, status=status.HTTP_201_CREATED)
+        data = {
+            'message': 'Ethereum QR code generated successfully',
+            'qr_code_url': qr_url,
+            'wallet_address': wallet_address,
+            'qr_file_path': qr_file_path
+        }
+        return Response(data, status=status.HTTP_201_CREATED)
 
 def Wei_to_Eth(amount):
     amount_is_wei = amount
@@ -394,3 +400,112 @@ class CoinBalance(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+
+
+
+class PaymentBinanceAPIView(APIView):
+    def get(self, request):
+        # Get mandatory query parameters
+        userId = request.GET.get("userId")
+        transaction_ID = request.GET.get("transactionID")
+        original_amount_usd = request.GET.get("original_amount")
+        success_url = request.GET.get("success_url")
+        failure_url = request.GET.get("failure_url")
+        fundpip_wallet_address = request.GET.get("fundpip_wallet_address")
+
+        # Check if any mandatory parameter is missing
+        if not all([transaction_ID, original_amount_usd, success_url, failure_url]):
+            return Response({
+                                "message": "All mandatory query parameters are required: transaction_ID, original_amount, fundpip_wallet_address, userId, success_url, failure_url"},
+                            status=rest_status.HTTP_400_BAD_REQUEST)
+
+        try:
+            original_amount_usd = float(original_amount_usd)
+        except ValueError:
+            return Response({"message": "original_amount must be a valid number"},
+                            status=rest_status.HTTP_400_BAD_REQUEST)
+
+        api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
+        token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
+
+        api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={fundpip_wallet_address}&contractaddress={token_contract_address}&apikey={api_key}'
+        try:
+            response = requests.get(api_url)
+            if response.status_code == 200:
+                data = response.json()
+                if data["status"] == "1":
+                    transactions = data["result"]
+
+                    last_transaction = None
+                    for data in reversed(transactions):
+                        print(data.get('hash'), '=============')
+                        hash_id = data.get('hash').lower()  # Convert to lowercase
+                        transaction_ID_lower = transaction_ID.lower()  # Convert to lowercase
+                        if hash_id == transaction_ID_lower:
+                            last_transaction = data
+                            break  # Stop iteration when the last transaction for the user is found
+
+                    if last_transaction:
+                        transaction_ID = last_transaction.get('hash')
+                        from_address = last_transaction.get('from')
+                        timestamp_str = last_transaction.get('timeStamp')
+                        timestamp = int(timestamp_str)
+                        datetime_obj = datetime.datetime.utcfromtimestamp(timestamp)
+                        formatted_datetime = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+                        eth_amount = last_transaction.get('value')
+                        eth_amount = int(eth_amount)
+                        eth_to_usd_exchange_rate = get_eth_to_usd_exchange_rate()
+                        usd_amount = eth_amount * eth_to_usd_exchange_rate
+                        usd_amount_formatted = "{:.2f}".format(usd_amount / 10 ** 18)
+                        paymentId = last_transaction.get('blockNumber')
+                        value = int(last_transaction.get('value'))
+                        amount = Wei_to_Eth(value)
+
+                        # Calculate status
+                        if original_amount_usd == float(usd_amount_formatted):
+                            payment_state = "Complete"
+                        elif original_amount_usd < float(usd_amount_formatted):
+                            difference = float(usd_amount_formatted) - original_amount_usd
+                            payment_state = f"OverPaid - {difference:.2f} USD"
+                        elif original_amount_usd > float(usd_amount_formatted):
+                            difference = original_amount_usd - float(usd_amount_formatted)
+                            payment_state = f"UnderPaid - {difference:.2f} USD"
+                        else:
+                            payment_state = "In Process"
+
+                        # Prepare response data
+                        response_data = {
+                            "payment_mode": "Binance",
+                            "userId": userId,
+                            "transaction_ID":transaction_ID,
+                            "user_address": from_address,
+                            "datetime": formatted_datetime,
+                            "paymentId": paymentId,
+                            "amount": amount,
+                            "usd_amount": f"{usd_amount_formatted} USD",
+                            "payment_state": payment_state,
+                            "status": True,
+                            "success_url": success_url
+                        }
+
+                        # Send appropriate response based on status
+                        return Response(response_data, status=rest_status.HTTP_200_OK)
+                    else:
+                        return Response({
+                                            "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}"},
+                                        status=rest_status.HTTP_400_BAD_REQUEST)
+
+                else:
+                    return Response({"message": "Etherscan API response status is not '1'."},
+                                    status=rest_status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"message": "Failed to connect to Etherscan API."},
+                                status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"message": str(e)}, status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
