@@ -1,12 +1,28 @@
 from rest_framework import status, viewsets, permissions
 from rest_framework.response import Response
+from django.core.mail import send_mail
 from rest_framework.views import APIView
+from django.utils.crypto import get_random_string
+from rest_framework.authtoken.models import Token
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import status
+from django.http import JsonResponse
+from .utils import *
 from .serializers import *
+import binascii
 from .models import *
 from faker import Faker
+from Crypto.Cipher import AES
+import json
 from django.contrib.auth.hashers import make_password
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login,get_user_model
 from django.db.models import Q
+from Crypto.Random import get_random_bytes
+from django.shortcuts import get_object_or_404
+import random
+import string
 fake = Faker()
 
 
@@ -141,3 +157,191 @@ class ChangePasswordView(APIView):
                 return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             return Response({'error': 'Invalid request'}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+#################################################################################################################################################################################
+
+
+
+User = get_user_model() 
+
+
+
+
+class RegisterView(APIView):
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if WebUser.objects.filter(email=request.data['email']).exists():
+            return Response({'message': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            otp = get_random_string(length=6, allowed_chars='0123456789')
+            OTP.objects.create(email=email, otp=otp)
+            send_mail(
+                'Your OTP Code',
+                f'Your OTP code is {otp}',
+                'dhimansahil.ameotech@gmail.com',
+                [email],
+                fail_silently=False,
+            )
+            return Response({'message': 'OTP sent to your email'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+class OTPVerifyView(APIView):
+    def post(self, request):
+        serializer = OTPSerializer(data=request.data)
+        print(request.data, '=========================')
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            otp = serializer.validated_data['otp']
+            if OTP.objects.filter(email=email, otp=otp).exists():
+                user_data = {
+                    'email': email,
+                    'password': request.data['password'],
+                    'confirm_password': request.data['confirm_password']
+                }
+                user_serializer = UserSerializer(data=user_data)
+                if user_serializer.is_valid():
+                    user_serializer.save()
+                    OTP.objects.filter(email=email).delete()
+                    return Response({'message': 'Registration successful'}, status=status.HTTP_201_CREATED)
+                return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+class WebLoginView(APIView):
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            password = serializer.validated_data['password']
+            user = authenticate(username=email, password=password)
+            if user:
+                refresh = RefreshToken.for_user(user)
+                return Response({
+                    'access_token': str(refresh.access_token),
+                    'refresh_token': str(refresh),
+                }, status=status.HTTP_200_OK)
+            return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+def send_reset_password_email(email, otp):
+    send_mail(
+        'Reset Password OTP',
+        f'Your OTP for resetting password is: {otp}',
+        'your_sender_email@example.com',  # Change this to your sender email
+        [email],
+        fail_silently=False,
+    )
+
+
+class ForgotPasswordView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        if email:
+            user = WebUser.objects.filter(email=email).first()
+            if user:
+                otp = get_random_string(length=6, allowed_chars='0123456789')
+                OTP.objects.create(email=email, otp=otp)
+                send_reset_password_email(email, otp)
+                return Response({'message': 'Reset OTP sent to your email'}, status=status.HTTP_200_OK)
+        return Response({'error': 'User with this email does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class ResetPasswordView(APIView):
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            otp = serializer.validated_data['otp']
+            new_password = serializer.validated_data['new_password']
+            otp_obj = OTP.objects.filter(email=email, otp=otp).first()
+            if otp_obj:
+                user = WebUser.objects.filter(email=email).first()
+                user.set_password(new_password)
+                user.save()
+                otp_obj.delete()
+                return Response({'message': 'Password reset successfully'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class EncryptDecryptView(APIView):
+    def post(self, request):
+        data = request.data
+        secret_key = get_random_bytes(16)
+        print("Length of secret key:", len(secret_key))  # Print the length of the secret key
+        json_data = json.dumps(data)
+        iv, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)  # Ensure data is encoded to bytes
+        EncryptedData.objects.create(iv=iv, encrypted_data=encrypted_data, key=base64.b64encode(secret_key).decode('utf-8'))  # Store the secret key
+        return Response({'iv': iv, 'encrypted_data': encrypted_data}, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        try:
+            encrypted_data_obj = EncryptedData.objects.get(id=request.query_params['id'])  # Retrieve the EncryptedData object by id from query parameters
+        except EncryptedData.DoesNotExist:
+            return JsonResponse({'message': 'No encrypted data found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            key = base64.b64decode(encrypted_data_obj.key)
+        except binascii.Error:
+            return JsonResponse({'message': 'Invalid base64-encoded key'}, status=status.HTTP_400_BAD_REQUEST)
+
+        print("Length of secret key:", len(key))  # Print the length of the secret key
+        decrypted_data = decrypt(encrypted_data_obj.iv, encrypted_data_obj.encrypted_data, key)  # Pass the key
+        decrypted_data_dict = json.loads(decrypted_data)
+        return JsonResponse(decrypted_data_dict, status=status.HTTP_200_OK)
+    
+
+class ApiKeyView(APIView):
+    def get(self, request):
+        userId = request.query_params.get('userId')
+        if userId is None:
+            return Response({'message': 'userId is required'}, status=status.HTTP_400_BAD_REQUEST)
+        api_keys = ApiKeys.objects.filter(user=userId)
+        serializer = ApiKeySerializer(api_keys, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        user_id = request.data.get("userId")
+        user = get_object_or_404(WebUser, pk=user_id) 
+        api_key = self.generate_api_key() 
+        data = {'user': user.id, 'Api_key': api_key}  
+        serializer = ApiKeySerializer(data=data) 
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+    def delete(self, request):
+        userId = request.query_params.get('userId')
+        if userId is None:
+            return Response({'message': 'userId is required'}, status=status.HTTP_400_BAD_REQUEST)
+        api_keys = ApiKeys.objects.filter(user=userId)
+        user = get_object_or_404(WebUser, id=userId)
+        api_key_obj = get_object_or_404(ApiKeys, user=userId)
+        api_key_obj.delete()
+        return Response({'message': 'API key deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+    def generate_api_key(self):
+        key_length = 32
+        characters = string.ascii_letters + string.digits
+        return ''.join(random.choice(characters) for _ in range(key_length))
+    
+class ContactUsCreateView(APIView):
+    def post(self, request):
+        serializer = ContactUsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+

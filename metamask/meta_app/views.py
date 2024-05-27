@@ -6,13 +6,14 @@ from .models import EthereumAccount, TokenContract, ChainDetails
 from .serializers import EthereumAccountSerializer,TokenInfoSerializer,ChainDetailsSerializer
 from web3 import Web3, Account
 import requests
-from .utils import get_token_logo_path
+from .utils import get_token_logo_path, send_usdt
 from Authentication.models import CustomUser
 from rest_framework import status as rest_status
 import pyqrcode
 import os
 from rest_framework import status
 import datetime
+
 
 
 class GenerateNetworkAccount(APIView):
@@ -405,21 +406,26 @@ class CoinBalance(APIView):
 
 
 
+def send_usdt(to_address, amount):
+    w3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
+    token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
+    token_abi_url = f'https://api.bscscan.com/api?module=contract&action=getabi&address={token_contract_address}'
+    response = requests.get(token_abi_url)
+    token_abi = response.json()['result']
+
+
 
 
 
 
 class PaymentBinanceAPIView(APIView):
     def get(self, request):
-        # Get mandatory query parameters
         userId = request.GET.get("userId")
         transaction_ID = request.GET.get("transactionID")
         original_amount_usd = request.GET.get("original_amount")
         success_url = request.GET.get("success_url")
         failure_url = request.GET.get("failure_url")
         fundpip_wallet_address = request.GET.get("fundpip_wallet_address")
-
-        # Check if any mandatory parameter is missing
         if not all([transaction_ID, original_amount_usd, success_url, failure_url]):
             return Response({
                                 "message": "All mandatory query parameters are required: transaction_ID, original_amount, fundpip_wallet_address, userId, success_url, failure_url"},
@@ -444,12 +450,11 @@ class PaymentBinanceAPIView(APIView):
 
                     last_transaction = None
                     for data in reversed(transactions):
-                        print(data.get('hash'), '=============')
-                        hash_id = data.get('hash').lower()  # Convert to lowercase
-                        transaction_ID_lower = transaction_ID.lower()  # Convert to lowercase
+                        hash_id = data.get('hash').lower()  
+                        transaction_ID_lower = transaction_ID.lower()
                         if hash_id == transaction_ID_lower:
                             last_transaction = data
-                            break  # Stop iteration when the last transaction for the user is found
+                            break 
 
                     if last_transaction:
                         transaction_ID = last_transaction.get('hash')
@@ -493,6 +498,8 @@ class PaymentBinanceAPIView(APIView):
                             "status": True,
                             "success_url": success_url
                         }
+
+                        send_usdt(usd_amount_formatted, fundpip_wallet_address)
 
                         # Send appropriate response based on status
                         return Response(response_data, status=rest_status.HTTP_200_OK)

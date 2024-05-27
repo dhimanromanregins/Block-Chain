@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.utils.crypto import get_random_string
 from faker import Faker
 
@@ -26,3 +26,62 @@ class CustomUser(AbstractUser):
             self.custom_id = f'ID-{get_random_string(length=7, allowed_chars="1234567890")}'
 
         super(CustomUser, self).save(*args, **kwargs)
+
+#############################################################################################################################################
+
+
+
+class WebUser(AbstractUser):
+    email = models.EmailField(unique=True)
+
+    groups = models.ManyToManyField(
+        Group,
+        related_name='webuser_set',
+        blank=True,
+        help_text=('The groups this user belongs to. A user will get all permissions granted to each of their groups.'),
+        verbose_name=('groups'),
+    )
+    
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='webuser_set',
+        blank=True,
+        help_text=('Specific permissions for this user.'),
+        verbose_name=('user permissions'),
+    )
+
+class OTP(models.Model):
+    email = models.EmailField()
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.email} - {self.otp} - {self.created_at}'
+    
+
+class EncryptedData(models.Model):
+    iv = models.CharField(max_length=24)
+    encrypted_data = models.TextField()
+    key = models.CharField(max_length=10000)
+    def __str__(self):
+        return f'{self.iv}'
+
+
+class ApiKeys(models.Model):
+    user = models.ForeignKey(WebUser, on_delete=models.CASCADE)
+    Api_key = models.CharField(max_length=10000, unique=True)
+    def __str__(self):
+        return f'{self.user}'
+
+
+class ContactUs(models.Model):
+    full_name = models.CharField(max_length=255)
+    email = models.EmailField()
+    phone_number = models.BigIntegerField(null=True, blank=True)
+    message = models.TextField()
+
+    def __str__(self):
+        return f'{self.full_name}'
+
+
+

@@ -57,7 +57,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'metamask.urls'
-AUTH_USER_MODEL = 'Authentication.CustomUser'
+AUTH_USER_MODEL = 'Authentication.WebUser'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -159,4 +159,13 @@ SIMPLE_JWT = {
     'VERIFYING_KEY': None,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "dhimansahil.ameotech@gmail.com"
+EMAIL_HOST_PASSWORD = "tevz dzxm xemy bpob"
 
