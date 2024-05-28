@@ -277,15 +277,19 @@ class EncryptDecryptView(APIView):
     def post(self, request):
         data = request.data
         secret_key = get_random_bytes(16)
-        print("Length of secret key:", len(secret_key))  # Print the length of the secret key
+        print("Length of secret key:", len(secret_key))  
         json_data = json.dumps(data)
-        iv, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)  # Ensure data is encoded to bytes
+        iv, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)
         EncryptedData.objects.create(iv=iv, encrypted_data=encrypted_data, key=base64.b64encode(secret_key).decode('utf-8'))  # Store the secret key
         return Response({'iv': iv, 'encrypted_data': encrypted_data}, status=status.HTTP_201_CREATED)
 
     def get(self, request):
+        clientId = request.query_params.get('clientId')
+        if clientId is None:
+            return JsonResponse({'message': 'clientId is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            encrypted_data_obj = EncryptedData.objects.get(id=request.query_params['id'])  # Retrieve the EncryptedData object by id from query parameters
+            encrypted_data_obj = EncryptedData.objects.get(encrypted_data=clientId)
         except EncryptedData.DoesNotExist:
             return JsonResponse({'message': 'No encrypted data found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -294,8 +298,8 @@ class EncryptDecryptView(APIView):
         except binascii.Error:
             return JsonResponse({'message': 'Invalid base64-encoded key'}, status=status.HTTP_400_BAD_REQUEST)
 
-        print("Length of secret key:", len(key))  # Print the length of the secret key
-        decrypted_data = decrypt(encrypted_data_obj.iv, encrypted_data_obj.encrypted_data, key)  # Pass the key
+        print("Length of secret key:", len(key))
+        decrypted_data = decrypt(encrypted_data_obj.iv, encrypted_data_obj.encrypted_data, key)
         decrypted_data_dict = json.loads(decrypted_data)
         return JsonResponse(decrypted_data_dict, status=status.HTTP_200_OK)
     

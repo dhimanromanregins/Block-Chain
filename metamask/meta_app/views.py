@@ -406,16 +406,6 @@ class CoinBalance(APIView):
 
 
 
-def send_usdt(to_address, amount):
-    w3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
-    token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
-    token_abi_url = f'https://api.bscscan.com/api?module=contract&action=getabi&address={token_contract_address}'
-    response = requests.get(token_abi_url)
-    token_abi = response.json()['result']
-
-
-
-
 
 
 class PaymentBinanceAPIView(APIView):
@@ -501,11 +491,10 @@ class PaymentBinanceAPIView(APIView):
 
                         send_usdt(usd_amount_formatted, fundpip_wallet_address)
 
-                        # Send appropriate response based on status
                         return Response(response_data, status=rest_status.HTTP_200_OK)
                     else:
                         return Response({
-                                            "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}"},
+                                            "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}", "status":False},
                                         status=rest_status.HTTP_400_BAD_REQUEST)
 
                 else:
