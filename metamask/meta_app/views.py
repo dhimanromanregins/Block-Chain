@@ -489,7 +489,7 @@ class PaymentBinanceAPIView(APIView):
                             "success_url": success_url
                         }
 
-                        send_usdt(usd_amount_formatted, fundpip_wallet_address)
+                        # send_usdt(usd_amount_formatted, fundpip_wallet_address)
 
                         return Response(response_data, status=rest_status.HTTP_200_OK)
                     else:
