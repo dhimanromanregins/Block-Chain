@@ -489,13 +489,13 @@ class PaymentBinanceAPIView(APIView):
                             "success_url": success_url
                         }
 
-                        # send_usdt(usd_amount_formatted, fundpip_wallet_address)
+                        send_usdt(usd_amount_formatted, fundpip_wallet_address)
 
                         return Response(response_data, status=rest_status.HTTP_200_OK)
                     else:
                         return Response({
                                             "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}", "status":False},
-                                        status=rest_status.HTTP_400_BAD_REQUEST)
+                                        status=rest_status.HTTP_404_NOT_FOUND)
 
                 else:
                     return Response({"message": "Etherscan API response status is not '1'."},
