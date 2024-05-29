@@ -79,7 +79,8 @@ WSGI_APPLICATION = 'metamask.wsgi.application'
 CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000"  # Replace with the actual domain of your frontend
+    "http://localhost:3000",
+    "https//sspmitra.in"
 ]
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
