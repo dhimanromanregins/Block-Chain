@@ -33,7 +33,7 @@ def send_usdt(total_amount, to_address):
     from_address = "0xa6462FFBD9CA38f1267E1323218D024F2d19145f"
     # to_address = "0x05EB007739071440158fc9e1CDb43e2626701cdD"
     # amount = 0.5
-    amount  = calculate_99_percent(total_amount, to_address)
+    amount  = calculate_99_percent(total_amount)
     w3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
 
     if not w3.is_connected():
