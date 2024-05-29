@@ -22,7 +22,9 @@ def get_token_logo_path(address):
     
 
 def calculate_99_percent(total_amount):
-    result = total_amount * 0.99
+    print(total_amount, '==========')
+    print(type(total_amount))
+    result = float(total_amount) * 0.99
     rounded_result = round(result, 3)
     return rounded_result
 
