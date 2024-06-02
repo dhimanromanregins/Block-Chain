@@ -411,6 +411,16 @@ class CoinBalance(APIView):
 
 
 
+def GetClientId(data):
+    secret_key = get_random_bytes(16)
+    print("Length of secret key:", len(secret_key))
+    json_data = json.dumps(data)
+    clientId, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)
+    EncryptedData.objects.create(iv=clientId, encrypted_data=encrypted_data,
+                                 secretId=base64.b64encode(secret_key).decode('utf-8'))  # Store the secret key
+    return clientId
+
+
 
 
 class PaymentBinanceAPIView(APIView):
@@ -442,8 +452,6 @@ class PaymentBinanceAPIView(APIView):
             coin_data = Binance.objects.get(coin=coin_instance)
             api_key = coin_data.api_key
             token_contract_address = coin_data.token_address
-
-            print(api_key, token_contract_address, '====================================')
         except:
             api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
             token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
@@ -506,24 +514,22 @@ class PaymentBinanceAPIView(APIView):
                             "status": True,
                             "success_url": success_url
                         }
-
-                        # send_usdt(usd_amount_formatted, fundpip_wallet_address)
                         Transaction_hash.objects.create(transaction_hash=transaction_ID)
 
-                        secret_key = get_random_bytes(16)
-                        print("Length of secret key:", len(secret_key))
-                        json_data = json.dumps(response_data)
-                        clientId, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)
-                        EncryptedData.objects.create(iv=clientId, encrypted_data=encrypted_data,secretId=base64.b64encode(secret_key).decode('utf-8'))
+                        cliId = GetClientId(response_data)
                         combined_response_data = {
                             'response_data': response_data,
-                            'clientId': clientId
+                            'clientId': cliId
                         }
                         return Response(combined_response_data, status=rest_status.HTTP_200_OK)
                     else:
-                        return Response({
-                                            "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}", "status":False},
-                                        status=rest_status.HTTP_404_NOT_FOUND)
+                        response_data1 = {
+                                            "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}","status":False}
+                        cliId = GetClientId(response_data1)
+                        response_data = {
+                            "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}",
+                            "clientId": cliId, "status": False}
+                        return Response(response_data, status=rest_status.HTTP_404_NOT_FOUND)
 
                 else:
                     return Response({"message": "Etherscan API response status is not '1'."},
