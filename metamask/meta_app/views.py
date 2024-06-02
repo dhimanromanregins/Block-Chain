@@ -2,17 +2,22 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.conf import settings
-from .models import EthereumAccount, TokenContract, ChainDetails
+from .models import EthereumAccount, TokenContract, ChainDetails, Transaction_hash,Binance, Coin_Details
 from .serializers import EthereumAccountSerializer,TokenInfoSerializer,ChainDetailsSerializer
 from web3 import Web3, Account
 import requests
 from .utils import get_token_logo_path, send_usdt
-from Authentication.models import CustomUser
+from Authentication.models import CustomUser, EncryptedData
+from Authentication.utils import  encrypt, decrypt, pad
+import binascii
 from rest_framework import status as rest_status
+from Crypto.Random import get_random_bytes
+import json
 import pyqrcode
 import os
 from rest_framework import status
 import datetime
+import base64
 
 
 
@@ -427,8 +432,21 @@ class PaymentBinanceAPIView(APIView):
             return Response({"message": "original_amount must be a valid number"},
                             status=rest_status.HTTP_400_BAD_REQUEST)
 
-        api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
-        token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
+        trx_exists = Transaction_hash.objects.filter(transaction_hash=transaction_ID).exists()
+        if trx_exists:
+            return Response({"message": "transaction_ID Is already used", "status":False},status=rest_status.HTTP_406_NOT_ACCEPTABLE)
+
+
+        try:
+            coin_instance = Coin_Details.objects.get(name='Binance')
+            coin_data = Binance.objects.get(coin=coin_instance)
+            api_key = coin_data.api_key
+            token_contract_address = coin_data.token_address
+
+            print(api_key, token_contract_address, '====================================')
+        except:
+            api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
+            token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
 
         api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={fundpip_wallet_address}&contractaddress={token_contract_address}&apikey={api_key}'
         try:
@@ -490,8 +508,18 @@ class PaymentBinanceAPIView(APIView):
                         }
 
                         # send_usdt(usd_amount_formatted, fundpip_wallet_address)
+                        Transaction_hash.objects.create(transaction_hash=transaction_ID)
 
-                        return Response(response_data, status=rest_status.HTTP_200_OK)
+                        secret_key = get_random_bytes(16)
+                        print("Length of secret key:", len(secret_key))
+                        json_data = json.dumps(response_data)
+                        clientId, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)
+                        EncryptedData.objects.create(iv=clientId, encrypted_data=encrypted_data,secretId=base64.b64encode(secret_key).decode('utf-8'))
+                        combined_response_data = {
+                            'response_data': response_data,
+                            'clientId': clientId
+                        }
+                        return Response(combined_response_data, status=rest_status.HTTP_200_OK)
                     else:
                         return Response({
                                             "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}", "status":False},

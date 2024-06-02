@@ -62,7 +62,7 @@ class OTP(models.Model):
 class EncryptedData(models.Model):
     iv = models.CharField(max_length=24)
     encrypted_data = models.TextField()
-    key = models.CharField(max_length=10000)
+    secretId = models.CharField(max_length=10000)
     def __str__(self):
         return f'{self.iv}'
 

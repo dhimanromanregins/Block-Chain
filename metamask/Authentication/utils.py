@@ -12,8 +12,9 @@ def pad(data):
 def encrypt(data, key):
     cipher = AES.new(key, AES.MODE_CBC)
     encrypted_data = cipher.encrypt(pad(data))
-    iv = base64.b64encode(cipher.iv).decode('utf-8')
-    encrypted_data = base64.b64encode(encrypted_data).decode('utf-8')
+    iv = base64.b64encode(cipher.iv).decode('utf-8').rstrip('+')
+    encrypted_data = base64.b64encode(encrypted_data).decode('utf-8').rstrip('+')
+
     return iv, encrypted_data
 
 # Function to decrypt data

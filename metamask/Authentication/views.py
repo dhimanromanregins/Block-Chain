@@ -1,9 +1,4 @@
-from rest_framework import status, viewsets, permissions
-from rest_framework.response import Response
 from django.core.mail import send_mail
-from rest_framework.views import APIView
-from django.utils.crypto import get_random_string
-from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -14,7 +9,6 @@ from .serializers import *
 import binascii
 from .models import *
 from faker import Faker
-from Crypto.Cipher import AES
 import json
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth import authenticate, login,get_user_model
@@ -277,24 +271,26 @@ class EncryptDecryptView(APIView):
     def post(self, request):
         data = request.data
         secret_key = get_random_bytes(16)
-        print("Length of secret key:", len(secret_key))  
+        print("Length of secret key:", len(secret_key))
         json_data = json.dumps(data)
-        iv, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)
-        EncryptedData.objects.create(iv=iv, encrypted_data=encrypted_data, key=base64.b64encode(secret_key).decode('utf-8'))  # Store the secret key
-        return Response({'iv': iv, 'encrypted_data': encrypted_data}, status=status.HTTP_201_CREATED)
+        clientId, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)
+        EncryptedData.objects.create(iv=clientId, encrypted_data=encrypted_data, secretId=base64.b64encode(secret_key).decode('utf-8'))  # Store the secret key
+        return Response({'clientId': clientId}, status=status.HTTP_201_CREATED)
 
     def get(self, request):
         clientId = request.query_params.get('clientId')
+        clientId = clientId.replace(' ', '+')
+        print(clientId, '=============')
         if clientId is None:
             return JsonResponse({'message': 'clientId is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            encrypted_data_obj = EncryptedData.objects.get(encrypted_data=clientId)
+            encrypted_data_obj = EncryptedData.objects.get(iv=clientId)
         except EncryptedData.DoesNotExist:
-            return JsonResponse({'message': 'No encrypted data found'}, status=status.HTTP_404_NOT_FOUND)
+            return JsonResponse({'message': 'No clientId data found'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            key = base64.b64decode(encrypted_data_obj.key)
+            key = base64.b64decode(encrypted_data_obj.secretId)
         except binascii.Error:
             return JsonResponse({'message': 'Invalid base64-encoded key'}, status=status.HTTP_400_BAD_REQUEST)
 

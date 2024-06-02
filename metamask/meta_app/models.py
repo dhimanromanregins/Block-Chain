@@ -29,3 +29,18 @@ class TokenContract(models.Model):
 
     def __str__(self):
         return self.user.username
+
+
+class Transaction_hash(models.Model):
+    transaction_hash = models.CharField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Coin_Details(models.Model):
+    name = models.CharField(max_length=255)
+
+class Binance(models.Model):
+    coin = models.ForeignKey(Coin_Details, on_delete=models.CASCADE)
+    api_key = models.CharField(max_length=1000)
+    token_address = models.CharField(max_length=1000)
+

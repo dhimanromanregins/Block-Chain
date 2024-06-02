@@ -1,6 +1,6 @@
 # admin.py
 from django.contrib import admin
-from .models import EthereumAccount,ChainDetails
+from .models import EthereumAccount,ChainDetails, Transaction_hash,Coin_Details, Binance
 
 @admin.register(EthereumAccount)
 class EthereumAccountAdmin(admin.ModelAdmin):
@@ -8,3 +8,6 @@ class EthereumAccountAdmin(admin.ModelAdmin):
 
 
 admin.site.register(ChainDetails)
+admin.site.register(Transaction_hash)
+admin.site.register(Coin_Details)
+admin.site.register(Binance)
