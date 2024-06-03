@@ -1,5 +1,6 @@
 from django.db import models
 from Authentication.models import CustomUser
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
@@ -35,12 +36,34 @@ class Transaction_hash(models.Model):
     transaction_hash = models.CharField(max_length=1000)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return self.transaction_hash
+
 
 class Coin_Details(models.Model):
     name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
 
 class Binance(models.Model):
     coin = models.ForeignKey(Coin_Details, on_delete=models.CASCADE)
     api_key = models.CharField(max_length=1000)
     token_address = models.CharField(max_length=1000)
+
+    def __str__(self):
+        return self.coin
+
+
+class SspWallet(models.Model):
+    ssp_wallet = models.CharField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.pk and SspWallet.objects.exists():
+            raise ValidationError('Only one SspWallet instance is allowed.')
+        super(SspWallet, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return self.ssp_wallet
 

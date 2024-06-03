@@ -2,7 +2,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.conf import settings
-from .models import EthereumAccount, TokenContract, ChainDetails, Transaction_hash,Binance, Coin_Details
+from .models import EthereumAccount, TokenContract, ChainDetails, Transaction_hash,Binance, Coin_Details, SspWallet
 from .serializers import EthereumAccountSerializer,TokenInfoSerializer,ChainDetailsSerializer
 from web3 import Web3, Account
 import requests
@@ -279,11 +279,11 @@ class PaymentAPIView(APIView):
         original_amount_usd = request.GET.get("original_amount")
         success_url = request.GET.get("success_url")
         failure_url = request.GET.get("failure_url")
-        fundpip_wallet_address = request.GET.get("fundpip_wallet_address")
+        sspwallet = request.GET.get("sspwallet")
 
         # Check if any mandatory parameter is missing
         if not all([user_address, original_amount_usd, success_url, failure_url]):
-            return Response({"message": "All mandatory query parameters are required: user_address, original_amount, fundpip_wallet_address, userId, success_url, failure_url"}, status=rest_status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "All mandatory query parameters are required: user_address, original_amount, sspwallet, userId, success_url, failure_url"}, status=rest_status.HTTP_400_BAD_REQUEST)
 
         try:
             original_amount_usd = float(original_amount_usd)
@@ -293,7 +293,7 @@ class PaymentAPIView(APIView):
         api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
         token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
 
-        api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={fundpip_wallet_address}&contractaddress={token_contract_address}&apikey={api_key}'
+        api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={sspwallet}&contractaddress={token_contract_address}&apikey={api_key}'
 
         try:
             response = requests.get(api_url)
@@ -428,12 +428,11 @@ class PaymentBinanceAPIView(APIView):
         userId = request.GET.get("userId")
         transaction_ID = request.GET.get("transactionID")
         original_amount_usd = request.GET.get("original_amount")
-        success_url = request.GET.get("success_url")
-        failure_url = request.GET.get("failure_url")
-        fundpip_wallet_address = request.GET.get("fundpip_wallet_address")
-        if not all([transaction_ID, original_amount_usd, success_url, failure_url]):
+
+        sspwallet = SspWallet.objects.first()
+        if not all([transaction_ID, original_amount_usd, userId]):
             return Response({
-                                "message": "All mandatory query parameters are required: transaction_ID, original_amount, fundpip_wallet_address, userId, success_url, failure_url"},
+                                "message": "All mandatory query parameters are required: transaction_ID, original_amount, userId"},
                             status=rest_status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -456,7 +455,7 @@ class PaymentBinanceAPIView(APIView):
             api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
             token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
 
-        api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={fundpip_wallet_address}&contractaddress={token_contract_address}&apikey={api_key}'
+        api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={sspwallet}&contractaddress={token_contract_address}&apikey={api_key}'
         try:
             response = requests.get(api_url)
             if response.status_code == 200:
@@ -511,8 +510,7 @@ class PaymentBinanceAPIView(APIView):
                             "amount": amount,
                             "usd_amount": f"{usd_amount_formatted} USD",
                             "payment_state": payment_state,
-                            "status": True,
-                            "success_url": success_url
+                            "status": True
                         }
                         Transaction_hash.objects.create(transaction_hash=transaction_ID)
 
@@ -526,16 +524,26 @@ class PaymentBinanceAPIView(APIView):
                         response_data1 = {
                                             "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}","status":False}
                         cliId = GetClientId(response_data1)
-                        response_data = {
+                        response_data = {"status": False}
+                        combined_response_data = {
                             "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}",
-                            "clientId": cliId, "status": False}
-                        return Response(response_data, status=rest_status.HTTP_404_NOT_FOUND)
-
+                            "clientId": cliId, "response_data": response_data}
+                        return Response(combined_response_data, status=rest_status.HTTP_404_NOT_FOUND)
                 else:
-                    return Response({"message": "Etherscan API response status is not '1'."},
-                                    status=rest_status.HTTP_400_BAD_REQUEST)
+                    response_data = {
+                        "message": "Bscscan API response status is not '1'.",
+                        "status": status.HTTP_400_BAD_REQUEST
+                    }
+                    return Response(response_data,status.HTTP_400_BAD_REQUEST)
             else:
-                return Response({"message": "Failed to connect to Etherscan API."},
-                                status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
+                response_data = {
+                    "message": "Failed to connect to Bscscan API.",
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR
+                }
+                return Response(response_data,status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            return Response({"message": str(e)}, status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response_data = {
+                "message": str(e),
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR
+            }
+            return Response(response_data, status.HTTP_500_INTERNAL_SERVER_ERROR)
