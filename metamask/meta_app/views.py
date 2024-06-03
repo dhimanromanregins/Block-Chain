@@ -428,8 +428,7 @@ class PaymentBinanceAPIView(APIView):
         userId = request.GET.get("userId")
         transaction_ID = request.GET.get("transactionID")
         original_amount_usd = request.GET.get("original_amount")
-
-        sspwallet = SspWallet.objects.first()
+        sspwallet = "0x05EB007739071440158fc9e1CDb43e2626701cdD"
         if not all([transaction_ID, original_amount_usd, userId]):
             return Response({
                                 "message": "All mandatory query parameters are required: transaction_ID, original_amount, userId"},
@@ -452,10 +451,11 @@ class PaymentBinanceAPIView(APIView):
             api_key = coin_data.api_key
             token_contract_address = coin_data.token_address
         except:
-            api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
+            api_key = "D6IYUSRETDF863M6B1S7Y16TBMKEU916C9"
             token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
 
         api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={sspwallet}&contractaddress={token_contract_address}&apikey={api_key}'
+        print(api_url, '========================')
         try:
             response = requests.get(api_url)
             if response.status_code == 200:
