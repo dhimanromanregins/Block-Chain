@@ -480,12 +480,12 @@ class PaymentBinanceAPIView(APIView):
                         eth_amount = last_transaction.get('value')
                         eth_amount = int(eth_amount)
                         eth_to_usd_exchange_rate = get_eth_to_usd_exchange_rate()
-                        usd_amount1 = eth_amount * eth_to_usd_exchange_rate
-                        usd_amount = "{:.2f}".format(usd_amount1)
+                        usd_amount = eth_amount * eth_to_usd_exchange_rate
                         usd_amount_formatted = "{:.3f}".format(usd_amount / 10 ** 18)
                         paymentId = last_transaction.get('blockNumber')
                         value = int(last_transaction.get('value'))
-                        amount = Wei_to_Eth(value)
+                        amount1 = Wei_to_Eth(value)
+                        amount = "{:.3f}".format(amount1)
 
                         # Calculate status
                         if original_amount_usd == float(usd_amount_formatted):
