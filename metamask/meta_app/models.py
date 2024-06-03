@@ -70,3 +70,12 @@ class SspWallet(models.Model):
     def __str__(self):
         return self.ssp_wallet
 
+
+class RePayment(models.Model):
+    total_amount = models.CharField(max_length=1000)
+    un_paid_amount = models.CharField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.ssp_wallet
+

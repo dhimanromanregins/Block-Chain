@@ -455,7 +455,6 @@ class PaymentBinanceAPIView(APIView):
             token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
 
         api_url = f'https://api.bscscan.com/api?module=account&action=tokentx&address={sspwallet}&contractaddress={token_contract_address}&apikey={api_key}'
-        print(api_url, '========================')
         try:
             response = requests.get(api_url)
             if response.status_code == 200:
@@ -490,12 +489,15 @@ class PaymentBinanceAPIView(APIView):
                         # Calculate status
                         if original_amount_usd == float(usd_amount_formatted):
                             payment_state = "Complete"
+                            payment = "Success"
                         elif original_amount_usd < float(usd_amount_formatted):
                             difference = float(usd_amount_formatted) - original_amount_usd
                             payment_state = f"OverPaid - {difference:.2f} USD"
+                            payment = "Overpaid"
                         elif original_amount_usd > float(usd_amount_formatted):
                             difference = original_amount_usd - float(usd_amount_formatted)
                             payment_state = f"UnderPaid - {difference:.2f} USD"
+                            payment = "Underpaid"
                         else:
                             payment_state = "In Process"
 
@@ -514,12 +516,33 @@ class PaymentBinanceAPIView(APIView):
                         }
                         Transaction_hash.objects.create(transaction_hash=transaction_ID)
 
-                        cliId = GetClientId(response_data)
-                        combined_response_data = {
-                            'response_data': response_data,
-                            'clientId': cliId
-                        }
-                        return Response(combined_response_data, status=rest_status.HTTP_200_OK)
+                        if payment == "Success":
+                            cliId = GetClientId(response_data)
+                            combined_response_data = {
+                                'response_data': response_data,
+                                'clientId': cliId,
+                                "payment": "Success",
+                            }
+                            return Response(combined_response_data, status=rest_status.HTTP_200_OK)
+
+                        if payment == "Overpaid":
+                            difference = float(usd_amount_formatted) - original_amount_usd
+                            combined_response_data = {
+                                'response_data': response_data,
+                                'status': True,
+                                "payment": "OverPaid",
+                                "difference": f"{difference:.2f} USD"
+                            }
+                            return Response(combined_response_data, status=rest_status.HTTP_200_OK)
+                        if payment == "Underpaid":
+                            difference = original_amount_usd - float(usd_amount_formatted)
+                            combined_response_data = {
+                                'response_data': response_data,
+                                'status': True,
+                                "payment": "UnderPaid",
+                                "difference": f"{difference:.2f} USD"
+                            }
+                            return Response(combined_response_data, status=rest_status.HTTP_200_OK)
                     else:
                         response_data1 = {
                                             "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}","status":False}
