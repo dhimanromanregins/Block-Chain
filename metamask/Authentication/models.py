@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.utils.crypto import get_random_string
 from faker import Faker
-
+import uuid
 fake = Faker()
 
 class CustomUser(AbstractUser):
@@ -69,7 +69,7 @@ class EncryptedData(models.Model):
 
 class ApiKeys(models.Model):
     user = models.ForeignKey(WebUser, on_delete=models.CASCADE)
-    Api_key = models.CharField(max_length=10000, unique=True)
+    Api_key = models.UUIDField(primary_key=True,default=uuid.uuid4, editable=False, unique=True)
     def __str__(self):
         return f'{self.user}'
 

@@ -1,6 +1,6 @@
 # serializers.py
 from rest_framework import serializers
-from .models import EthereumAccount , TokenContract,ChainDetails
+from .models import EthereumAccount , TokenContract,ChainDetails, RePayment
 
 class EthereumAccountSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,3 +28,9 @@ class ChainDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChainDetails
         fields = '__all__'
+
+class RePaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RePayment
+        fields = ['re_pay_id', 'total_amount', 'un_paid_amount', 'created_at']
+        read_only_fields = ['re_pay_id', 'created_at']

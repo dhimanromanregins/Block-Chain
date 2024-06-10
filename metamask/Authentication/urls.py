@@ -15,6 +15,8 @@ urlpatterns = [
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset_password'),
     path('encrypt-decrypt/', EncryptDecryptView.as_view(), name='encrypt_decrypt'),
-    path('api-keys/', ApiKeyView.as_view(), name='api-keys'),
+    path('api-keys/', ApiKeysListCreateAPIView.as_view(), name='api-keys-list-create'),
+    path('api-keys/<str:pk>/', ApiKeysRetrieveUpdateDestroyAPIView.as_view(), name='api-keys-retrieve-update-destroy'),
     path('contact-us/', ContactUsCreateView.as_view(), name='contact-us-create'),
+    path('user-api-key/', UserApiKeysAPIView.as_view(), name='user-api-key'),
 ]

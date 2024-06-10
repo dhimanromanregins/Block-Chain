@@ -1,6 +1,7 @@
 from django.db import models
 from Authentication.models import CustomUser
 from django.core.exceptions import ValidationError
+import uuid
 
 # Create your models here.
 
@@ -72,6 +73,7 @@ class SspWallet(models.Model):
 
 
 class RePayment(models.Model):
+    re_pay_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     total_amount = models.CharField(max_length=1000)
     un_paid_amount = models.CharField(max_length=1000)
     created_at = models.DateTimeField(auto_now_add=True)

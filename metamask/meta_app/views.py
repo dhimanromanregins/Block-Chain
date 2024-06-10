@@ -2,8 +2,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.conf import settings
-from .models import EthereumAccount, TokenContract, ChainDetails, Transaction_hash,Binance, Coin_Details, SspWallet
-from .serializers import EthereumAccountSerializer,TokenInfoSerializer,ChainDetailsSerializer
+from .models import EthereumAccount, TokenContract,RePayment, ChainDetails, Transaction_hash,Binance, Coin_Details, SspWallet
+from .serializers import EthereumAccountSerializer,RePaymentSerializer,TokenInfoSerializer,ChainDetailsSerializer
 from web3 import Web3, Account
 import requests
 from .utils import get_token_logo_path, send_usdt
@@ -571,3 +571,22 @@ class PaymentBinanceAPIView(APIView):
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR
             }
             return Response(response_data, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class RePaymentDetail(APIView):
+
+    def get(self, request, re_pay_id):
+        try:
+            re_payment = RePayment.objects.get(re_pay_id=re_pay_id)
+            serializer = RePaymentSerializer(re_payment)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except RePayment.DoesNotExist:
+            return Response({"error": "RePayment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def post(self, request):
+        serializer = RePaymentSerializer(data=request.data)
+        if serializer.is_valid():
+            re_payment = serializer.save()
+            return Response(RePaymentSerializer(re_payment).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

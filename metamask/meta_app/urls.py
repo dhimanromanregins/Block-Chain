@@ -14,4 +14,6 @@ urlpatterns = [
     path('balance/<str:address>/<str:symbol>/', CoinBalance.as_view(), name='coin_balance'),
     path('paymentbinance/', PaymentBinanceAPIView.as_view(), name='paymentbinance'),
     path('payment/', PaymentAPIView.as_view(), name='payment'),
+    path('re_payment/<str:re_pay_id>/', RePaymentDetail.as_view(), name='re_payment_detail'),
+    path('re_payment/', RePaymentDetail.as_view(), name='re_payment_create'),
 ]

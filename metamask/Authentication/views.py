@@ -8,6 +8,7 @@ from .utils import *
 from .serializers import *
 import binascii
 from .models import *
+import uuid
 from faker import Faker
 import json
 from django.contrib.auth.hashers import make_password
@@ -218,6 +219,7 @@ class WebLoginView(APIView):
             if user:
                 refresh = RefreshToken.for_user(user)
                 return Response({
+                    'user_id': user.id,
                     'access_token': str(refresh.access_token),
                     'refresh_token': str(refresh),
                 }, status=status.HTTP_200_OK)
@@ -298,43 +300,62 @@ class EncryptDecryptView(APIView):
         decrypted_data = decrypt(encrypted_data_obj.iv, encrypted_data_obj.encrypted_data, key)
         decrypted_data_dict = json.loads(decrypted_data)
         return JsonResponse(decrypted_data_dict, status=status.HTTP_200_OK)
-    
 
-class ApiKeyView(APIView):
+class ApiKeysListCreateAPIView(APIView):
     def get(self, request):
-        userId = request.query_params.get('userId')
-        if userId is None:
-            return Response({'message': 'userId is required'}, status=status.HTTP_400_BAD_REQUEST)
-        api_keys = ApiKeys.objects.filter(user=userId)
-        serializer = ApiKeySerializer(api_keys, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        api_keys = ApiKeys.objects.all()
+        serializer = ApiKeysSerializer(api_keys, many=True)
+        return Response(serializer.data)
 
     def post(self, request):
-        user_id = request.data.get("userId")
-        user = get_object_or_404(WebUser, pk=user_id) 
-        api_key = self.generate_api_key() 
-        data = {'user': user.id, 'Api_key': api_key}  
-        serializer = ApiKeySerializer(data=data) 
+        api_key = str(uuid.uuid4())
+        request.data['Api_key'] = api_key
+        serializer = ApiKeysSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-    def delete(self, request):
-        userId = request.query_params.get('userId')
-        if userId is None:
-            return Response({'message': 'userId is required'}, status=status.HTTP_400_BAD_REQUEST)
-        api_keys = ApiKeys.objects.filter(user=userId)
-        user = get_object_or_404(WebUser, id=userId)
-        api_key_obj = get_object_or_404(ApiKeys, user=userId)
-        api_key_obj.delete()
-        return Response({'message': 'API key deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
-
     def generate_api_key(self):
         key_length = 32
         characters = string.ascii_letters + string.digits
         return ''.join(random.choice(characters) for _ in range(key_length))
+
+class ApiKeysRetrieveUpdateDestroyAPIView(APIView):
+    def get_object(self, pk):
+        return get_object_or_404(ApiKeys, pk=pk)
+
+    def get(self, request, pk):
+        api_key = self.get_object(pk)
+        serializer = ApiKeysSerializer(api_key)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        api_key = self.get_object(pk)
+        serializer = ApiKeysSerializer(api_key, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        api_key = self.get_object(pk)
+        api_key.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserApiKeysAPIView(APIView):
+    def get(self, request):
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            return Response({"message": "User ID is required in the query parameters."}, status=400)
+
+        user_keys = ApiKeys.objects.filter(user_id=user_id).first()
+        if user_keys:
+            serializer = ApiKeysSerializer(user_keys)
+            return Response(serializer.data)
+        else:
+            return Response({"message": "User does not have an API key."}, status=404)
     
 class ContactUsCreateView(APIView):
     def post(self, request):
