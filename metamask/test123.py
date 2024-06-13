@@ -37,59 +37,65 @@
 
 
 
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
-import base64
-import json
+# from Crypto.Cipher import AES
+# from Crypto.Random import get_random_bytes
+# import base64
+# import json
+#
+# # Function to pad the data to be encrypted
+# def pad(data):
+#     padding_length = AES.block_size - (len(data) % AES.block_size)
+#     padding = bytes([padding_length]) * padding_length
+#     return data + padding
+#
+# # Function to encrypt data
+# def encrypt(data, key):
+#     cipher = AES.new(key, AES.MODE_CBC)
+#     encrypted_data = cipher.encrypt(pad(data))
+#     iv = base64.b64encode(cipher.iv).decode('utf-8')
+#     encrypted_data = base64.b64encode(encrypted_data).decode('utf-8')
+#     return iv, encrypted_data
+#
+# # Function to decrypt data
+# def decrypt(iv, encrypted_data, key):
+#     iv = base64.b64decode(iv)
+#     encrypted_data = base64.b64decode(encrypted_data)
+#     cipher = AES.new(key, AES.MODE_CBC, iv)
+#     decrypted_data = cipher.decrypt(encrypted_data)
+#     padding_length = decrypted_data[-1]
+#     decrypted_data = decrypted_data[:-padding_length]
+#     return decrypted_data.decode('utf-8')
+#
+# # Example usage
+# def main():
+#     # Generate a secret key (make sure to keep it secure)
+#     secret_key = get_random_bytes(16)  # 16 bytes key for AES-128
+#
+#     # Data to be encrypted
+#     data = {
+#         'userId': '123',
+#         'Username': 'example_user',
+#         'Amount': '100',
+#         'Apikey': 'your_api_key'
+#     }
+#
+#     # Convert data to JSON format
+#     json_data = json.dumps(data)
+#
+#     # Encrypt the data
+#     iv, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)
+#     print("Encrypted data:", encrypted_data)
+#     print("IV:", iv)
+#
+#     # Decrypt the data
+#     decrypted_data = decrypt(iv, encrypted_data, secret_key)
+#     print("Decrypted data:", decrypted_data)
+#
+# if __name__ == "__main__":
+#     main()
 
-# Function to pad the data to be encrypted
-def pad(data):
-    padding_length = AES.block_size - (len(data) % AES.block_size)
-    padding = bytes([padding_length]) * padding_length
-    return data + padding
 
-# Function to encrypt data
-def encrypt(data, key):
-    cipher = AES.new(key, AES.MODE_CBC)
-    encrypted_data = cipher.encrypt(pad(data))
-    iv = base64.b64encode(cipher.iv).decode('utf-8')
-    encrypted_data = base64.b64encode(encrypted_data).decode('utf-8')
-    return iv, encrypted_data
+from py_avataaars import PyAvataaar
 
-# Function to decrypt data
-def decrypt(iv, encrypted_data, key):
-    iv = base64.b64decode(iv)
-    encrypted_data = base64.b64decode(encrypted_data)
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    decrypted_data = cipher.decrypt(encrypted_data)
-    padding_length = decrypted_data[-1]
-    decrypted_data = decrypted_data[:-padding_length]
-    return decrypted_data.decode('utf-8')
-
-# Example usage
-def main():
-    # Generate a secret key (make sure to keep it secure)
-    secret_key = get_random_bytes(16)  # 16 bytes key for AES-128
-
-    # Data to be encrypted
-    data = {
-        'userId': '123',
-        'Username': 'example_user',
-        'Amount': '100',
-        'Apikey': 'your_api_key'
-    }
-
-    # Convert data to JSON format
-    json_data = json.dumps(data)
-
-    # Encrypt the data
-    iv, encrypted_data = encrypt(json_data.encode('utf-8'), secret_key)
-    print("Encrypted data:", encrypted_data)
-    print("IV:", iv)
-
-    # Decrypt the data
-    decrypted_data = decrypt(iv, encrypted_data, secret_key)
-    print("Decrypted data:", decrypted_data)
-
-if __name__ == "__main__":
-    main()
+avatar = PyAvataaar()
+avatar.render_png_file('<output_file.png>')

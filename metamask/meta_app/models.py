@@ -1,7 +1,8 @@
 from django.db import models
-from Authentication.models import CustomUser
+from Authentication.models import CustomUser,ApiKeys
 from django.core.exceptions import ValidationError
 import uuid
+
 
 # Create your models here.
 
@@ -80,4 +81,18 @@ class RePayment(models.Model):
 
     def __str__(self):
         return self.ssp_wallet
+
+
+class PaymentDetails(models.Model):
+    api_key = models.ForeignKey(ApiKeys, on_delete=models.CASCADE)
+    transaction_hash = models.CharField(max_length=1000)
+    payment_datetime = models.CharField(max_length=1000)
+    sender_address = models.CharField(max_length=1000)
+    receiver_address = models.CharField(max_length=1000)
+    status = models.CharField(max_length=1000)
+    amount = models.CharField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.transaction_hash
 

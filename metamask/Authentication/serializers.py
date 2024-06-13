@@ -87,7 +87,7 @@ class ResetPasswordSerializer(serializers.Serializer):
 class ApiKeysSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApiKeys
-        fields = ['user', 'Api_key']
+        fields = ['user', 'Api_key', "id"]
 
 class ContactUsSerializer(serializers.ModelSerializer):
     class Meta:

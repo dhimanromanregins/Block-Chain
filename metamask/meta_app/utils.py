@@ -3,6 +3,8 @@ from web3 import Web3
 import json
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
+from Authentication.models import ApiKeys
+from .models import PaymentDetails
 import base64
 
 def get_token_logo_path(address):
@@ -84,6 +86,29 @@ def send_usdt(total_amount, to_address):
     signed_txn = w3.eth.account.sign_transaction(transaction, private_key=private_key)
     tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
     return tx_hash.hex()
+
+
+
+def add_payment_details(api_key_value, transaction_hash, payment_datetime, sender_address, receiver_address, status, amount):
+    try:
+        api_key = ApiKeys.objects.get(Api_key=api_key_value)
+        print(api_key, "00000000000000000000000000000")
+        payment_detail = PaymentDetails.objects.create(
+            api_key=api_key,
+            transaction_hash=transaction_hash,
+            payment_datetime=payment_datetime,
+            sender_address=sender_address,
+            receiver_address=receiver_address,
+            status=status,
+            amount=amount
+        )
+        return payment_detail
+    except ApiKeys.DoesNotExist:
+        raise ValueError("Invalid API key")
+    except Exception as e:
+        raise ValueError(f"An error occurred: {e}")
+
+# add_payment_details("PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH", "0x37e135884ed0f2db220abceb81766b7de90119b9a5ba53b139e5c398ae850c62", "2024-04-30 10:07:22", "0xa180fe01b906a1be37be6c534a3300785b20d947" ,"0x05EB007739071440158fc9e1CDb43e2626701cdD", "Complete" ,"0.500")
 
 
 

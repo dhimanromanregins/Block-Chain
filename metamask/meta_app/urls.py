@@ -16,4 +16,6 @@ urlpatterns = [
     path('payment/', PaymentAPIView.as_view(), name='payment'),
     path('re_payment/<str:re_pay_id>/', RePaymentDetail.as_view(), name='re_payment_detail'),
     path('re_payment/', RePaymentDetail.as_view(), name='re_payment_create'),
+    path('paymentdetails/<str:api_key>/', PaymentDetailsList.as_view(), name='paymentdetails-list'),
+    path('paymentdetails/', PaymentDetailsList.as_view(), name='paymentdetails-post'),
 ]

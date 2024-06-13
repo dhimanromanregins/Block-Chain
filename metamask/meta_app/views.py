@@ -2,12 +2,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.conf import settings
-from .models import EthereumAccount, TokenContract,RePayment, ChainDetails, Transaction_hash,Binance, Coin_Details, SspWallet
-from .serializers import EthereumAccountSerializer,RePaymentSerializer,TokenInfoSerializer,ChainDetailsSerializer
+from .models import EthereumAccount, PaymentDetails,TokenContract,RePayment, ChainDetails, Transaction_hash,Binance, Coin_Details, SspWallet
+from .serializers import EthereumAccountSerializer,PaymentDetailsSerializer,RePaymentSerializer,TokenInfoSerializer,ChainDetailsSerializer
 from web3 import Web3, Account
 import requests
-from .utils import get_token_logo_path, send_usdt
-from Authentication.models import CustomUser, EncryptedData
+from .utils import get_token_logo_path, send_usdt, add_payment_details
+from Authentication.models import CustomUser, EncryptedData, ApiKeys
 from Authentication.utils import  encrypt, decrypt, pad
 import binascii
 from rest_framework import status as rest_status
@@ -428,11 +428,17 @@ class PaymentBinanceAPIView(APIView):
         userId = request.GET.get("userId")
         transaction_ID = request.GET.get("transactionID")
         original_amount_usd = request.GET.get("original_amount")
+        sspapi_key = request.GET.get("api_key")
         sspwallet = "0x05EB007739071440158fc9e1CDb43e2626701cdD"
         if not all([transaction_ID, original_amount_usd, userId]):
             return Response({
-                                "message": "All mandatory query parameters are required: transaction_ID, original_amount, userId"},
+                                "message": "All mandatory query parameters are required: transaction_ID, original_amount, userId, api_key"},
                             status=rest_status.HTTP_400_BAD_REQUEST)
+
+        try:
+            ApiKeys.objects.get(Api_key=sspapi_key)
+        except ApiKeys.DoesNotExist:
+            return Response({"message": "Invalid API key"}, status=rest_status.HTTP_400_BAD_REQUEST)
 
         try:
             original_amount_usd = float(original_amount_usd)
@@ -515,6 +521,13 @@ class PaymentBinanceAPIView(APIView):
                             "payment_state": payment_state,
                             "status": True
                         }
+
+
+                        try:
+                            add_payment_details(sspapi_key, transaction_ID, formatted_datetime, from_address, sspwallet, payment_state, usd_amount_formatted)
+                        except:
+                            print("Error adding payment details")
+
                         Transaction_hash.objects.create(transaction_hash=transaction_ID)
 
                         if payment == "Success":
@@ -544,6 +557,9 @@ class PaymentBinanceAPIView(APIView):
                                 "difference": f"{difference:.2f} USD"
                             }
                             return Response(combined_response_data, status=rest_status.HTTP_200_OK)
+
+
+
                     else:
                         response_data1 = {
                                             "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}","status":False}
@@ -589,4 +605,19 @@ class RePaymentDetail(APIView):
         if serializer.is_valid():
             re_payment = serializer.save()
             return Response(RePaymentSerializer(re_payment).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class PaymentDetailsList(APIView):
+    def get(self, request, api_key):
+        payment_details = PaymentDetails.objects.filter(api_key__Api_key=api_key)
+        serializer = PaymentDetailsSerializer(payment_details, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = PaymentDetailsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
