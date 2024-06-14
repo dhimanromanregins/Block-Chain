@@ -10,6 +10,7 @@ from .utils import get_token_logo_path, send_usdt, add_payment_details
 from Authentication.models import CustomUser, EncryptedData, ApiKeys
 from Authentication.utils import  encrypt, decrypt, pad
 import binascii
+from decimal import Decimal
 from rest_framework import status as rest_status
 from Crypto.Random import get_random_bytes
 import json
@@ -613,7 +614,40 @@ class PaymentDetailsList(APIView):
     def get(self, request, api_key):
         payment_details = PaymentDetails.objects.filter(api_key__Api_key=api_key)
         serializer = PaymentDetailsSerializer(payment_details, many=True)
-        return Response(serializer.data)
+
+        total_count = payment_details.count()
+
+        total_amount = Decimal('0.0')
+        pending_count = 0
+        settled_count = 0
+        total_amount_pending = Decimal('0.0')
+        total_amount_settled = Decimal('0.0')
+
+        for detail in serializer.data:
+            try:
+                amount = Decimal(detail['amount'])
+                total_amount += amount
+            except (ValueError, InvalidOperation):
+                # Handle cases where the amount field is not a valid decimal
+                continue
+
+            if detail['status'] == 'Pending':
+                pending_count += 1
+                total_amount_pending += amount
+            elif detail['status'] == 'Settled':
+                settled_count += 1
+                total_amount_settled += amount
+
+        response_data = {
+            "total_count": total_count,
+            "total_amount": str(total_amount),  # Convert Decimal to string to avoid JSON serialization issues
+            "pending_count": pending_count,
+            "settled_count": settled_count,
+            "total_amount_pending": str(total_amount_pending),
+            "total_amount_settled": str(total_amount_settled),
+            "payment_details": serializer.data
+        }
+        return Response(response_data)
 
     def post(self, request):
         serializer = PaymentDetailsSerializer(data=request.data)
