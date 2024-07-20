@@ -431,9 +431,10 @@ class PaymentBinanceAPIView(APIView):
         original_amount_usd = request.GET.get("original_amount")
         sspapi_key = request.GET.get("api_key")
         sspwallet = "0x05EB007739071440158fc9e1CDb43e2626701cdD"
-        if not all([transaction_ID, original_amount_usd, userId]):
+        order_id = request.GET.get("order_id")
+        if not all([transaction_ID, original_amount_usd, userId, order_id]):
             return Response({
-                                "message": "All mandatory query parameters are required: transaction_ID, original_amount, userId, api_key"},
+                                "message": "All mandatory query parameters are required: transaction_ID, original_amount, userId, api_key, order_id"},
                             status=rest_status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -520,6 +521,7 @@ class PaymentBinanceAPIView(APIView):
                             "amount": amount,
                             "usd_amount": f"{usd_amount_formatted} USD",
                             "payment_state": payment_state,
+                            "order_id":order_id,
                             "status": True
                         }
 
