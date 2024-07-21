@@ -443,6 +443,10 @@ class PaymentBinanceAPIView(APIView):
         except ValueError:
             return Response({"message": "original_amount must be a valid number"},
                             status=rest_status.HTTP_400_BAD_REQUEST)
+        try:
+            ApiKeys.objects.get(Api_key=sspapi_key)
+        except ApiKeys.DoesNotExist:
+            return Response({"message": "Invalid API key"}, status=rest_status.HTTP_400_BAD_REQUEST)
 
         trx_exists = Transaction_hash.objects.filter(transaction_hash=transaction_ID).exists()
         if trx_exists:
