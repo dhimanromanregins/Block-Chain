@@ -437,10 +437,6 @@ class PaymentBinanceAPIView(APIView):
                                 "message": "All mandatory query parameters are required: transaction_ID, original_amount, userId, api_key, order_id"},
                             status=rest_status.HTTP_400_BAD_REQUEST)
 
-        try:
-            ApiKeys.objects.get(Api_key=sspapi_key)
-        except ApiKeys.DoesNotExist:
-            return Response({"message": "Invalid API key"}, status=rest_status.HTTP_400_BAD_REQUEST)
 
         try:
             original_amount_usd = float(original_amount_usd)
@@ -450,7 +446,7 @@ class PaymentBinanceAPIView(APIView):
 
         trx_exists = Transaction_hash.objects.filter(transaction_hash=transaction_ID).exists()
         if trx_exists:
-            return Response({"message": "transaction_ID Is already used", "status":False},status=rest_status.HTTP_406_NOT_ACCEPTABLE)
+            return Response({"message": "transaction_ID Is already used", "status":"Already Used"},status=rest_status.HTTP_406_NOT_ACCEPTABLE)
 
 
         try:
@@ -570,7 +566,7 @@ class PaymentBinanceAPIView(APIView):
                         response_data = {"status": False}
                         combined_response_data = {
                             "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}",
-                            "clientId": cliId, "response_data": response_data}
+                            "clientId": cliId,"status":"No Found", "response_data": response_data}
                         return Response(combined_response_data, status=rest_status.HTTP_404_NOT_FOUND)
                 else:
                     response_data = {
