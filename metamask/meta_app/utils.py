@@ -50,7 +50,6 @@ def decrypt(iv, encrypted_data, key):
     
 
 def calculate_99_percent(total_amount):
-    print(total_amount, '==========')
     print(type(total_amount))
     result = float(total_amount) * 0.99
     rounded_result = round(result, 3)
@@ -59,12 +58,14 @@ def calculate_99_percent(total_amount):
 
 
 def send_usdt(total_amount, to_address):
+    amount_value = round(float(total_amount), 1)
     private_key = "1a84b070dd06f93df00a8471025aa30b57c50da99150f061bb656c3967402bac"
     from_address = "0xa6462FFBD9CA38f1267E1323218D024F2d19145f"
-    # to_address = "0x05EB007739071440158fc9e1CDb43e2626701cdD"
-    # amount = 0.5
-    amount  = calculate_99_percent(total_amount)
-    w3 = Web3(Web3.HTTPProvider('https://bsc-dataseed.binance.org/'))
+    to_address = "0x05EB007739071440158fc9e1CDb43e2626701cdD"
+    to_address = Web3.to_checksum_address(to_address)
+    # total_amount = 10
+    amount = calculate_99_percent(amount_value)
+    w3 = Web3(Web3.HTTPProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'))
 
     if not w3.is_connected():
         raise Exception("Failed to connect to BSC")
@@ -78,7 +79,7 @@ def send_usdt(total_amount, to_address):
     amount_in_wei = int(amount * (10 ** 6))
     nonce = w3.eth.get_transaction_count(from_address)
     transaction = usdt_contract.functions.transfer(to_address, amount_in_wei).build_transaction({
-        'chainId': 56,
+        'chainId': 97,
         'gas': 200000,
         'gasPrice': w3.to_wei('5', 'gwei'),
         'nonce': nonce,

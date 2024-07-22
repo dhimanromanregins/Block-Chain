@@ -2,13 +2,15 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.conf import settings
-from .models import EthereumAccount, PaymentDetails,TokenContract,RePayment, ChainDetails, Transaction_hash,Binance, Coin_Details, SspWallet
-from .serializers import EthereumAccountSerializer,PaymentDetailsSerializer,RePaymentSerializer,TokenInfoSerializer,ChainDetailsSerializer
+from .models import EthereumAccount, PaymentDetails, TokenContract, RePayment, ChainDetails, Transaction_hash, Binance, \
+    Coin_Details, SspWallet
+from .serializers import EthereumAccountSerializer, PaymentDetailsSerializer, RePaymentSerializer, TokenInfoSerializer, \
+    ChainDetailsSerializer
 from web3 import Web3, Account
 import requests
 from .utils import get_token_logo_path, send_usdt, add_payment_details
 from Authentication.models import CustomUser, EncryptedData, ApiKeys
-from Authentication.utils import  encrypt, decrypt, pad
+from Authentication.utils import encrypt, decrypt, pad
 import binascii
 from decimal import Decimal
 from rest_framework import status as rest_status
@@ -19,7 +21,6 @@ import os
 from rest_framework import status
 import datetime
 import base64
-
 
 
 class GenerateNetworkAccount(APIView):
@@ -78,9 +79,6 @@ class GenerateNetworkAccount(APIView):
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 
-
-
-
 class CoinTransactionHistory(APIView):
     def get(self, request, address):
         # Replace with your Etherscan API key
@@ -98,12 +96,13 @@ class CoinTransactionHistory(APIView):
                     transactions = data["result"]
                     return Response(transactions, status=status.HTTP_200_OK)
                 else:
-                    return Response({"message": "Etherscan API response status is not '1'."}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"message": "Etherscan API response status is not '1'."},
+                                    status=status.HTTP_400_BAD_REQUEST)
             else:
-                return Response({"message": "Failed to connect to Etherscan API."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"message": "Failed to connect to Etherscan API."},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 class CoinTokenInfo(APIView):
@@ -163,7 +162,8 @@ class CoinPriceView(APIView):
         amount = float(amount)
 
         if crypto_name is None:
-            return Response({"message": "crypto_name is required in the request data."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "crypto_name is required in the request data."},
+                            status=status.HTTP_400_BAD_REQUEST)
         if amount is None:
             return Response({"message": "amount is required in the request data."}, status=status.HTTP_400_BAD_REQUEST)
         eth_price_url = 'https://api.coingecko.com/api/v3/simple/price'
@@ -187,7 +187,9 @@ class CoinPriceView(APIView):
                 except ValueError:
                     return Response({'error': 'Invalid numeric value for token_price or amount.'}, status=400)
             else:
-                return Response({'error': f'Token price data not found for {crypto_name} in {currency} in the response.'}, status=400)
+                return Response(
+                    {'error': f'Token price data not found for {crypto_name} in {currency} in the response.'},
+                    status=400)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
@@ -201,10 +203,13 @@ class SendCoinView(APIView):
             value = data.get('value')
             print(request.data)
             if not sender_address or not receiver_address or value is None:
-                return Response({'error': 'sender_address, receiver_address, and value must be provided in the request body'}, status=400)
+                return Response(
+                    {'error': 'sender_address, receiver_address, and value must be provided in the request body'},
+                    status=400)
 
             # Connect to an Ethereum node
-            w3 = Web3(Web3.HTTPProvider('https://fittest-misty-seed.quiknode.pro/0a037be47a682e693c5de2a0698134eefa60928b/'))
+            w3 = Web3(
+                Web3.HTTPProvider('https://fittest-misty-seed.quiknode.pro/0a037be47a682e693c5de2a0698134eefa60928b/'))
 
             # Check if the sender has a sufficient balance for the transfer
             sender_balance = w3.eth.get_balance(sender_address)
@@ -243,6 +248,7 @@ class EthereumQRCodeAPIView(APIView):
         }
         return Response(data, status=status.HTTP_201_CREATED)
 
+
 def Wei_to_Eth(amount):
     amount_is_wei = amount
     wei_to_ether_conversion_factor = 10 ** 18
@@ -261,6 +267,7 @@ def get_eth_to_usd_exchange_rate():
         print(f"Error fetching USDT price: {e}")
         return None
 
+
 def calculate_usdt_value(amount_usdt):
     usdt_price = get_eth_to_usd_exchange_rate()
     if usdt_price is not None:
@@ -268,8 +275,6 @@ def calculate_usdt_value(amount_usdt):
         return value_usd
     else:
         return None
-
-
 
 
 class PaymentAPIView(APIView):
@@ -284,12 +289,15 @@ class PaymentAPIView(APIView):
 
         # Check if any mandatory parameter is missing
         if not all([user_address, original_amount_usd, success_url, failure_url]):
-            return Response({"message": "All mandatory query parameters are required: user_address, original_amount, sspwallet, userId, success_url, failure_url"}, status=rest_status.HTTP_400_BAD_REQUEST)
+            return Response({
+                                "message": "All mandatory query parameters are required: user_address, original_amount, sspwallet, userId, success_url, failure_url"},
+                            status=rest_status.HTTP_400_BAD_REQUEST)
 
         try:
             original_amount_usd = float(original_amount_usd)
         except ValueError:
-            return Response({"message": "original_amount must be a valid number"}, status=rest_status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "original_amount must be a valid number"},
+                            status=rest_status.HTTP_400_BAD_REQUEST)
 
         api_key = "PUVPB6IQVRMQGGCEMPSY9FQ7TUVJMJN4CH"
         token_contract_address = '0x55d398326f99059fF775485246999027B3197955'
@@ -302,7 +310,7 @@ class PaymentAPIView(APIView):
                 data = response.json()
                 if data["status"] == "1":
                     transactions = data["result"]
-                    
+
                     # Find the last transaction for the user address
                     last_transaction = None
                     for data in reversed(transactions):
@@ -353,11 +361,18 @@ class PaymentAPIView(APIView):
                             "status": True,
                             "success_url": success_url
                         }
+                        try:
+                            send_usdt_details = send_usdt(usd_amount, from_address)
+                            print(send_usdt_details, '*****************************')
+                        except:
+                            print("Uable to send usdt 999999999999999999999999999999")
+                            pass
 
                         # Send appropriate response based on status
                         return Response(response_data, status=rest_status.HTTP_200_OK)
                     else:
-                        return Response({"message": f"No transactions found for user ID - {userId} with wallet address - {user_address}"},
+                        return Response({
+                                            "message": f"No transactions found for user ID - {userId} with wallet address - {user_address}"},
                                         status=rest_status.HTTP_400_BAD_REQUEST)
 
                 else:
@@ -368,6 +383,7 @@ class PaymentAPIView(APIView):
                                 status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"message": str(e)}, status=rest_status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class CoinBalance(APIView):
     def get(self, request, address, symbol):
@@ -391,7 +407,13 @@ class CoinBalance(APIView):
 
             # Token details
             token_contract_address = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
-            token_abi = [{"constant":True,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"payable":False,"stateMutability":"view","type":"function"},{"constant":True,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"payable":False,"stateMutability":"view","type":"function"},{"constant":True,"inputs":[{"name":"","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"payable":False,"stateMutability":"view","type":"function"}]
+            token_abi = [{"constant": True, "inputs": [], "name": "name", "outputs": [{"name": "", "type": "string"}],
+                          "payable": False, "stateMutability": "view", "type": "function"},
+                         {"constant": True, "inputs": [], "name": "symbol", "outputs": [{"name": "", "type": "string"}],
+                          "payable": False, "stateMutability": "view", "type": "function"},
+                         {"constant": True, "inputs": [{"name": "", "type": "address"}], "name": "balanceOf",
+                          "outputs": [{"name": "", "type": "uint256"}], "payable": False, "stateMutability": "view",
+                          "type": "function"}]
 
             # Load the token contract
             token_contract = w3.eth.contract(address=token_contract_address, abi=token_abi)
@@ -409,9 +431,6 @@ class CoinBalance(APIView):
             return Response({"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
-
-
 def GetClientId(data):
     secret_key = get_random_bytes(16)
     print("Length of secret key:", len(secret_key))
@@ -420,8 +439,6 @@ def GetClientId(data):
     EncryptedData.objects.create(iv=clientId, encrypted_data=encrypted_data,
                                  secretId=base64.b64encode(secret_key).decode('utf-8'))  # Store the secret key
     return clientId
-
-
 
 
 class PaymentBinanceAPIView(APIView):
@@ -434,9 +451,8 @@ class PaymentBinanceAPIView(APIView):
         order_id = request.GET.get("order_id")
         if not all([transaction_ID, original_amount_usd, userId, order_id]):
             return Response({
-                                "message": "All mandatory query parameters are required: transaction_ID, original_amount, userId, api_key, order_id"},
-                            status=rest_status.HTTP_400_BAD_REQUEST)
-
+                "message": "All mandatory query parameters are required: transaction_ID, original_amount, userId, api_key, order_id"},
+                status=rest_status.HTTP_400_BAD_REQUEST)
 
         try:
             original_amount_usd = float(original_amount_usd)
@@ -450,8 +466,8 @@ class PaymentBinanceAPIView(APIView):
 
         trx_exists = Transaction_hash.objects.filter(transaction_hash=transaction_ID).exists()
         if trx_exists:
-            return Response({"message": "transaction_ID Is already used", "status":"Already Used"},status=rest_status.HTTP_406_NOT_ACCEPTABLE)
-
+            return Response({"message": "transaction_ID Is already used", "status": "Already Used"},
+                            status=rest_status.HTTP_406_NOT_ACCEPTABLE)
 
         try:
             coin_instance = Coin_Details.objects.get(name='Binance')
@@ -472,11 +488,11 @@ class PaymentBinanceAPIView(APIView):
 
                     last_transaction = None
                     for data in reversed(transactions):
-                        hash_id = data.get('hash').lower()  
+                        hash_id = data.get('hash').lower()
                         transaction_ID_lower = transaction_ID.lower()
                         if hash_id == transaction_ID_lower:
                             last_transaction = data
-                            break 
+                            break
 
                     if last_transaction:
                         transaction_ID = last_transaction.get('hash')
@@ -514,22 +530,29 @@ class PaymentBinanceAPIView(APIView):
                         response_data = {
                             "payment_mode": "Binance",
                             "userId": userId,
-                            "transaction_ID":transaction_ID,
+                            "transaction_ID": transaction_ID,
                             "user_address": from_address,
                             "datetime": formatted_datetime,
                             "paymentId": paymentId,
                             "amount": amount,
                             "usd_amount": f"{usd_amount_formatted} USD",
                             "payment_state": payment_state,
-                            "order_id":order_id,
+                            "order_id": order_id,
                             "status": True
                         }
 
-
                         try:
-                            add_payment_details(sspapi_key, transaction_ID, formatted_datetime, from_address, sspwallet, payment_state, usd_amount_formatted)
+                            add_payment_details(sspapi_key, transaction_ID, formatted_datetime, from_address, sspwallet,
+                                                payment_state, usd_amount_formatted)
                         except:
                             print("Error adding payment details")
+
+                        try:
+                            send_usdt_details = send_usdt(usd_amount_formatted, from_address)
+                            print(send_usdt_details)
+                        except:
+                            print("Uable to send usdt")
+                            pass
 
                         Transaction_hash.objects.create(transaction_hash=transaction_ID)
 
@@ -565,32 +588,33 @@ class PaymentBinanceAPIView(APIView):
 
                     else:
                         response_data1 = {
-                                            "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}","status":False, "order_id":order_id}
+                            "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}",
+                            "status": False, "order_id": order_id}
                         cliId = GetClientId(response_data1)
                         response_data = {"status": False}
                         combined_response_data = {
                             "message": f"No transactions found for user ID - {userId} with transaction ID - {transaction_ID}",
-                            "clientId": cliId,"status":"No Found", "order_id":order_id,"response_data": response_data}
+                            "clientId": cliId, "status": "No Found", "order_id": order_id,
+                            "response_data": response_data}
                         return Response(combined_response_data, status=rest_status.HTTP_404_NOT_FOUND)
                 else:
                     response_data = {
                         "message": "Bscscan API response status is not '1'.",
                         "status": status.HTTP_400_BAD_REQUEST
                     }
-                    return Response(response_data,status.HTTP_400_BAD_REQUEST)
+                    return Response(response_data, status.HTTP_400_BAD_REQUEST)
             else:
                 response_data = {
                     "message": "Failed to connect to Bscscan API.",
                     "status": status.HTTP_500_INTERNAL_SERVER_ERROR
                 }
-                return Response(response_data,status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(response_data, status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             response_data = {
                 "message": str(e),
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR
             }
             return Response(response_data, status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 class RePaymentDetail(APIView):
@@ -609,7 +633,6 @@ class RePaymentDetail(APIView):
             re_payment = serializer.save()
             return Response(RePaymentSerializer(re_payment).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 class PaymentDetailsList(APIView):
