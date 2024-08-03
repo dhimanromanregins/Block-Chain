@@ -512,16 +512,30 @@ class PaymentBinanceAPIView(APIView):
                         amount = "{:.3f}".format(amount1)
 
                         # Calculate status
+                        # if original_amount_usd == float(usd_amount_formatted):
+                        #     payment_state = "Complete"
+                        #     payment = "Success"
+                        # elif original_amount_usd < float(usd_amount_formatted):
+                        #     difference = float(usd_amount_formatted) - original_amount_usd
+                        #     payment_state = f"OverPaid - {difference:.3f} USD"
+                        #     payment = "Overpaid"
+                        # elif original_amount_usd > float(usd_amount_formatted):
+                        #     difference = original_amount_usd - float(usd_amount_formatted)
+                        #     payment_state = f"UnderPaid - {difference:.3f} USD"
+                        #     payment = "Underpaid"
+                        # else:
+                        #     payment_state = "In Process"
+
                         if original_amount_usd == float(usd_amount_formatted):
                             payment_state = "Complete"
                             payment = "Success"
                         elif original_amount_usd < float(usd_amount_formatted):
                             difference = float(usd_amount_formatted) - original_amount_usd
-                            payment_state = f"OverPaid - {difference:.3f} USD"
+                            payment_state = "Complete"
                             payment = "Overpaid"
                         elif original_amount_usd > float(usd_amount_formatted):
                             difference = original_amount_usd - float(usd_amount_formatted)
-                            payment_state = f"UnderPaid - {difference:.3f} USD"
+                            payment_state = "Complete"
                             payment = "Underpaid"
                         else:
                             payment_state = "In Process"
